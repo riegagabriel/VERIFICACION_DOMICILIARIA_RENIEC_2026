@@ -1,9 +1,7 @@
-# streamlit_app.py (archivo completo)
-import os
+# streamlit_app.py
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
-import streamlit.components.v1 as components
 
 # ========================
 # CONFIGURACIÓN GENERAL
@@ -12,27 +10,25 @@ st.set_page_config(
     page_title="Dashboard RENIEC – Verificación Domiciliaria 2026",
     layout="wide"
 )
+
 st.title("📊 Verificación Domiciliaria")
 st.markdown("Monitoreo de avance de la verificación domiciliaria en distritos")
 
 # ========================
-# Helper: cargar excel con manejo de errores
+# Helper: cargar excel
 # ========================
 @st.cache_data
-def load_excel(path: str, sheet_name=0):
+def load_excel(path: str):
     try:
-        return pd.read_excel(path, sheet_name=sheet_name)
-    except Exception as e:
-        st.warning(f"Advertencia al leer {path} (sheet={sheet_name}): {e}")
+        return pd.read_excel(path)
+    except:
         return pd.DataFrame()
 
 # ========================
-# Cargar DataFrames principales
+# Cargar DataFrames
 # ========================
 value_box = load_excel("data/value_box.xlsx")
-situaciones_box = load_excel("data/box_situaciones.xlsx")   # ← CORREGIDO (era value_box.xlsx)
-#data_graf = load_excel("data/data_graf.xlsx")
-#tabla_desagregada_mcp_merged = load_excel("data/tabla_desagregada_mcp_merged.xlsx")
+situaciones_box = load_excel("data/box_situaciones.xlsx")
 
 # ========================
 # PESTAÑAS
@@ -44,17 +40,17 @@ tab1, tab2, tab3 = st.tabs([
 ])
 
 # ===========================================
-# 📈 TAB 1: PROGRESO GENERAL
+# TAB 1
 # ===========================================
 with tab1:
+
     st.subheader("Indicadores")
 
-    if not value_box.empty and ("Variable" in value_box.columns) and ("Valor" in value_box.columns):
+    if not value_box.empty:
         indicadores = dict(zip(value_box["Variable"], value_box["Valor"]))
     else:
         indicadores = {}
 
-    # Extraer valores con fallback
     dnis     = indicadores.get("ciudadanos_veri", 0)
     deps     = indicadores.get("departamentos", 0)
     provs    = indicadores.get("provincias", 0)
@@ -62,32 +58,49 @@ with tab1:
     fechas   = indicadores.get("fecha", 0)
     personal = indicadores.get("encuestadores", 0)
 
-    # Value Boxes — CORREGIDO: eran 6 métricas en 5 columnas
     col1, col2, col3, col4, col5, col6 = st.columns(6)
-    col1.metric("🆔 Ciudadanos Verificados", f"{int(dnis):,}" if pd.notna(dnis) else "0")
-    col2.metric("🗺️ Departamentos", int(deps) if pd.notna(deps) else 0)
-    col3.metric("🏛️ Provincias", int(provs) if pd.notna(provs) else 0)
-    col4.metric("📍 Distritos", int(dist) if pd.notna(dist) else 0)
-    col5.metric("🗓️ Jornadas de trabajo", int(fechas) if pd.notna(fechas) else 0)
-    col6.metric("👷 Personal en campo", int(personal) if pd.notna(personal) else 0)
+
+    col1.metric("🆔 Ciudadanos Verificados", f"{int(dnis):,}")
+    col2.metric("🗺️ Departamentos", int(deps))
+    col3.metric("🏛️ Provincias", int(provs))
+    col4.metric("📍 Distritos", int(dist))
+    col5.metric("🗓️ Jornadas de trabajo", int(fechas))
+    col6.metric("👷 Personal en campo", int(personal))
 
     st.markdown("---")
 
-    # ── Gráfico de situaciones (box_situaciones) ──
-    st.subheader("Situaciones")
-    if not situaciones_box.empty and ("Variable" in situaciones_box.columns) and ("Valor" in situaciones_box.columns):
-        fig = go.Figure(go.Bar(
-            x=situaciones_box["Variable"],
-            y=situaciones_box["Valor"],
-            text=situaciones_box["Valor"],
-            textposition="outside"
-        ))
-        fig.update_layout(
-            xaxis_title="Tipo",
-            yaxis_title="Cantidad",
-            plot_bgcolor="rgba(0,0,0,0)",
-            height=400
-        )
+    # ========================
+    # SITUACIONES
+    # ========================
+    st.subheader("Situaciones de verificación")
+
+    if not situaciones_box.empty:
+
+        situaciones = dict(zip(situaciones_box["Variable"], situaciones_box["Valor"]))
+
+        A = situaciones.get("tipo_a", 0)
+        B = situaciones.get("tipo_b", 0)
+        C = situaciones.get("tipo_c", 0)
+
+        col1, col2, col3 = st.columns(3)
+
+        col1.metric("Tipo A", f"{int(A):,}")
+        col2.metric("Tipo B", f"{int(B):,}")
+        col3.metric("Tipo C", f"{int(C):,}")
+
+        # ========================
+        # Gráfico donut
+        # ========================
+
+        fig = go.Figure(data=[go.Pie(
+            labels=["Tipo A", "Tipo B", "Tipo C"],
+            values=[A, B, C],
+            hole=.5
+        )])
+
+        fig.update_layout(height=400)
+
         st.plotly_chart(fig, use_container_width=True)
+
     else:
-        st.info("No hay datos de situaciones disponibles.")
+        st.warning("No se encontró información de situaciones.")
