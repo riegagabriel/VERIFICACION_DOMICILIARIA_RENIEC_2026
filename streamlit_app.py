@@ -2,6 +2,7 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
+import plotly.express as px
 
 # ========================
 # CONFIGURACIÓN GENERAL
@@ -29,6 +30,7 @@ def load_excel(path: str):
 # ========================
 value_box = load_excel("data/value_box.xlsx")
 situaciones_box = load_excel("data/box_situaciones.xlsx")
+tabla_distrito = load_excel("data/tabla_desagregada_distrito.xlsx")
 
 # ========================
 # PESTAÑAS
@@ -40,7 +42,7 @@ tab1, tab2, tab3 = st.tabs([
 ])
 
 # ===========================================
-# TAB 1
+# TAB 1: PROGRESO GENERAL
 # ===========================================
 with tab1:
 
@@ -88,14 +90,10 @@ with tab1:
         col2.metric("Tipo B", f"{int(B):,}")
         col3.metric("Tipo C", f"{int(C):,}")
 
-        # ========================
-        # Gráfico donut
-        # ========================
-
         fig = go.Figure(data=[go.Pie(
             labels=["Tipo A", "Tipo B", "Tipo C"],
             values=[A, B, C],
-            hole=.5
+            hole=.55
         )])
 
         fig.update_layout(height=400)
@@ -104,3 +102,123 @@ with tab1:
 
     else:
         st.warning("No se encontró información de situaciones.")
+
+    st.markdown("---")
+
+    # ========================
+    # TABLA DESAGREGADA
+    # ========================
+    st.subheader("📋 Avance por distrito")
+
+    if not tabla_distrito.empty:
+
+        tabla_distrito["PORC_AVANCE"] = tabla_distrito["PORC_AVANCE"].round(2)
+
+        tabla_ordenada = tabla_distrito.sort_values(
+            by="PORC_AVANCE",
+            ascending=False
+        )
+
+        buscar = st.text_input("🔎 Buscar distrito")
+
+        if buscar:
+            tabla_ordenada = tabla_ordenada[
+                tabla_ordenada["DIST"].str.contains(buscar, case=False)
+            ]
+
+        st.dataframe(
+            tabla_ordenada,
+            use_container_width=True,
+            hide_index=True
+        )
+
+    else:
+        st.warning("No se encontró la tabla desagregada.")
+
+# ===========================================
+# TAB 2: MONITOREO POR DEPARTAMENTO
+# ===========================================
+with tab2:
+
+    st.subheader("📍 Avance por departamento")
+
+    if not tabla_distrito.empty:
+
+        deptos = ["Todos"] + sorted(tabla_distrito["REG"].unique())
+
+        depto = st.selectbox(
+            "Seleccionar departamento",
+            deptos
+        )
+
+        df = tabla_distrito.copy()
+
+        if depto != "Todos":
+            df = df[df["REG"] == depto]
+
+        # gráfico de barras
+        df_bar = df.sort_values(
+            by="PORC_AVANCE",
+            ascending=False
+        ).head(15)
+
+        fig = px.bar(
+            df_bar,
+            x="PORC_AVANCE",
+            y="DIST",
+            orientation="h",
+            text="PORC_AVANCE",
+            title="Top distritos por avance"
+        )
+
+        fig.update_layout(
+            yaxis={'categoryorder':'total ascending'}
+        )
+
+        st.plotly_chart(fig, use_container_width=True)
+
+        st.markdown("---")
+
+        # top y bottom
+        col1, col2 = st.columns(2)
+
+        with col1:
+
+            st.subheader("🏆 Top 10 distritos con mayor avance")
+
+            top = df.sort_values(
+                by="PORC_AVANCE",
+                ascending=False
+            ).head(10)
+
+            st.dataframe(
+                top,
+                hide_index=True,
+                use_container_width=True
+            )
+
+        with col2:
+
+            st.subheader("⚠️ Distritos con menor avance")
+
+            bottom = df.sort_values(
+                by="PORC_AVANCE",
+                ascending=True
+            ).head(10)
+
+            st.dataframe(
+                bottom,
+                hide_index=True,
+                use_container_width=True
+            )
+
+# ===========================================
+# TAB 3: MAPA
+# ===========================================
+with tab3:
+
+    st.subheader("🗺️ Mapa de verificación")
+
+    st.info(
+        "Para visualizar el mapa se requiere un archivo con coordenadas de distritos."
+    )
