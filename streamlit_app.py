@@ -35,8 +35,8 @@ situaciones_box = load_excel("data/box_situaciones.xlsx")
 # ========================
 tab1, tab2, tab3 = st.tabs([
     "📈 Progreso General",
-    "📍 Monitoreo por MCP",
-    "🗺️ Mapa de Empadronamiento"
+    "📍 Monitoreo por Departamento",
+    "🗺️ Mapa"
 ])
 
 # ===========================================
