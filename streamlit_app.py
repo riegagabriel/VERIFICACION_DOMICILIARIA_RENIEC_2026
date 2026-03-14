@@ -337,8 +337,32 @@ with tab2:
 # ====================================================
 with tab3:
 
+    import zipfile
+    import streamlit.components.v1 as components
+
     st.subheader("🗺️ Mapa de verificación")
 
-    st.info(
-        "Para visualizar el mapa se requiere un archivo con coordenadas de distritos."
-    )
+    zip_path = "data/mapa_verificacion_departamentos.zip"
+
+    try:
+
+        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+
+            html_files = [f for f in zip_ref.namelist() if f.endswith(".html")]
+
+            if html_files:
+
+                html_content = zip_ref.read(html_files[0]).decode("utf-8")
+
+                components.html(
+                    html_content,
+                    height=700,
+                    scrolling=True
+                )
+
+            else:
+                st.warning("El archivo ZIP no contiene un HTML.")
+
+    except FileNotFoundError:
+
+        st.info("Mapa aún no disponible.")
