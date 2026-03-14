@@ -141,37 +141,37 @@ with tab1:
 
     st.markdown("---")
 
-    # ========================
-    # TABLA DESAGREGADA
-    # ========================
-    st.subheader("📋 Avance por distrito")
+# ========================
+# TABLA DESAGREGADA
+# ========================
+st.subheader("📋 Avance por distrito")
 
-    if not df_filtrado.empty:
+if not df_filtrado.empty:
 
-        df_filtrado["PORC_AVANCE"] = df_filtrado["PORC_AVANCE"].round(2)
+    df_filtrado["PORC_AVANCE"] = df_filtrado["PORC_AVANCE"].round(2)
 
-        tabla_ordenada = df_filtrado.sort_values(
-            by="PORC_AVANCE",
-            ascending=False
-        )
+    tabla_ordenada = df_filtrado.sort_values(
+        by="PORC_AVANCE",
+        ascending=False
+    )
 
-        buscar = st.text_input("🔎 Buscar distrito")
+    buscar = st.text_input("🔎 Buscar distrito")
 
-        if buscar:
-            tabla_ordenada = tabla_ordenada[
-                tabla_ordenada["DIST"].str.contains(buscar, case=False)
-            ]
+    if buscar:
+        tabla_ordenada = tabla_ordenada[
+            tabla_ordenada["DIST"].str.contains(buscar, case=False)
+        ]
 
-        st.dataframe(
-            tabla_ordenada[
-                ["REG","PROV","DIST","ciudadanos_verificados","A","B","C","MAX_POB_VERIFICAR","PORC_AVANCE"]
-            ],
-            use_container_width=True,
-            hide_index=True
-        )
+    st.dataframe(
+        tabla_ordenada[
+            ["REG","PROV","DIST","ciudadanos_verificados","A","B","C","MAX_POB_VERIFICAR","PORC_AVANCE"]
+        ],
+        use_container_width=True,
+        hide_index=True
+    )
 
-    else:
-        st.warning("No se encontró la tabla desagregada.")
+else:
+    st.warning("No se encontró la tabla desagregada.")
 
 # ===========================================
 # TAB 2: MONITOREO POR DEPARTAMENTO
