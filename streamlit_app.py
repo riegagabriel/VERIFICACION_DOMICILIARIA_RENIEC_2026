@@ -371,12 +371,18 @@ with tab3:
     archivo_html = mapa_archivos[mapa_tipo]
 
     # =============================
+    # Ruta del ZIP
+    # =============================
+
+    zip_path = "data/mapas_verificacion.zip"
+
+    # =============================
     # Abrir ZIP
     # =============================
 
     try:
 
-        with zipfile.ZipFile("mapas_verificacion.zip", "r") as z:
+        with zipfile.ZipFile(zip_path, "r") as z:
 
             html_content = z.read(archivo_html).decode("utf-8")
 
@@ -386,6 +392,10 @@ with tab3:
             scrolling=True
         )
 
-    except:
+    except FileNotFoundError:
 
-        st.warning("No se encontró el archivo de mapas ZIP.")
+        st.error("❌ No se encontró el archivo: data/mapas_verificacion.zip")
+
+    except KeyError:
+
+        st.error(f"❌ El archivo {archivo_html} no existe dentro del ZIP.")
