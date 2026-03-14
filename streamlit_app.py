@@ -51,21 +51,17 @@ with tab1:
     st.subheader("Indicadores")
 
     if not value_box.empty:
-
         indicadores = dict(zip(value_box["Variable"], value_box["Valor"]))
-
         dnis = indicadores.get("ciudadanos_veri", 0)
         deps = indicadores.get("departamentos", 0)
         provs = indicadores.get("provincias", 0)
         dist = indicadores.get("distritos", 0)
         fechas = indicadores.get("fecha", 0)
         personal = indicadores.get("encuestadores", 0)
-
     else:
         dnis = deps = provs = dist = fechas = personal = 0
 
     col1,col2,col3,col4,col5,col6 = st.columns(6)
-
     col1.metric("🆔 Ciudadanos Verificados", f"{int(dnis):,}")
     col2.metric("🗺️ Departamentos", int(deps))
     col3.metric("🏛️ Provincias", int(provs))
@@ -73,7 +69,50 @@ with tab1:
     col5.metric("🗓️ Jornadas", int(fechas))
     col6.metric("👷 Personal", int(personal))
 
-    st.markdown("---")
+    # ========================
+    # AVANCE GENERAL
+    # ========================
+    POB_TOTAL = 65137
+    porc_avance_general = round((dnis / POB_TOTAL) * 100, 2) if POB_TOTAL > 0 else 0
+    pendientes = POB_TOTAL - int(dnis)
+
+    col_gauge, col_resumen = st.columns([2, 1])
+
+    with col_gauge:
+
+        fig_gauge = go.Figure(go.Indicator(
+            mode="gauge+number+delta",
+            value=porc_avance_general,
+            number={"suffix": "%", "font": {"size": 48}},
+            delta={"reference": 100, "suffix": "%"},
+            title={"text": "Avance General de Verificación", "font": {"size": 18}},
+            gauge={
+                "axis": {"range": [0, 100], "ticksuffix": "%"},
+                "bar": {"color": "#2ecc71"},
+                "steps": [
+                    {"range": [0, 33],  "color": "#f9e4e4"},
+                    {"range": [33, 66], "color": "#fef9e7"},
+                    {"range": [66, 100],"color": "#eafaf1"},
+                ],
+                "threshold": {
+                    "line": {"color": "#e74c3c", "width": 4},
+                    "thickness": 0.75,
+                    "value": 100
+                }
+            }
+        ))
+
+        fig_gauge.update_layout(height=300, margin=dict(t=60, b=20, l=30, r=30))
+        st.plotly_chart(fig_gauge, use_container_width=True)
+
+    with col_resumen:
+
+        st.markdown("### 📊 Resumen de avance")
+        st.markdown("---")
+        st.metric("🎯 Meta total",         f"{POB_TOTAL:,}")
+        st.metric("✅ Verificados",         f"{int(dnis):,}")
+        st.metric("⏳ Pendientes",          f"{pendientes:,}")
+        st.metric("📈 % Completado",        f"{porc_avance_general}%")
 
     # ========================
     # FILTROS
