@@ -107,7 +107,7 @@ with tab1:
 
     with col_resumen:
 
-        st.markdown("### 📊 Resumen de avance")
+        st.markdown("### Resumen de avance general")
         st.markdown("---")
         st.metric("🎯 Meta total",         f"{POB_TOTAL:,}")
         st.metric("✅ Verificados",         f"{int(dnis):,}")
