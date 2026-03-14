@@ -335,34 +335,57 @@ with tab2:
 # ====================================================
 # TAB 3
 # ====================================================
-with tab3:
 
-    import zipfile
-    import streamlit.components.v1 as components
+import zipfile
+import streamlit.components.v1 as components
+
+with tab3:
 
     st.subheader("🗺️ Mapa de verificación")
 
-    zip_path = "data/mapa_verificacion_departamentos.zip"
+    st.info(
+        "Seleccione el tipo de mapa para visualizar la planificación territorial."
+    )
+
+    # =============================
+    # Selección de mapa
+    # =============================
+
+    mapa_tipo = st.selectbox(
+        "Tipo de mapa",
+        [
+            "OpenStreetMap",
+            "CartoDB Claro",
+            "CartoDB Oscuro",
+            "Terrain"
+        ]
+    )
+
+    mapa_archivos = {
+        "OpenStreetMap": "mapa_osm.html",
+        "CartoDB Claro": "mapa_carto_claro.html",
+        "CartoDB Oscuro": "mapa_carto_oscuro.html",
+        "Terrain": "mapa_terrain.html"
+    }
+
+    archivo_html = mapa_archivos[mapa_tipo]
+
+    # =============================
+    # Abrir ZIP
+    # =============================
 
     try:
 
-        with zipfile.ZipFile(zip_path, 'r') as zip_ref:
+        with zipfile.ZipFile("mapas_verificacion.zip", "r") as z:
 
-            html_files = [f for f in zip_ref.namelist() if f.endswith(".html")]
+            html_content = z.read(archivo_html).decode("utf-8")
 
-            if html_files:
+        components.html(
+            html_content,
+            height=650,
+            scrolling=True
+        )
 
-                html_content = zip_ref.read(html_files[0]).decode("utf-8")
+    except:
 
-                components.html(
-                    html_content,
-                    height=700,
-                    scrolling=True
-                )
-
-            else:
-                st.warning("El archivo ZIP no contiene un HTML.")
-
-    except FileNotFoundError:
-
-        st.info("Mapa aún no disponible.")
+        st.warning("No se encontró el archivo de mapas ZIP.")
