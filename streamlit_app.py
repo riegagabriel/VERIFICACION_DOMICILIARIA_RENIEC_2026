@@ -347,7 +347,7 @@ with tab3:
         "Seleccione el tipo de mapa para visualizar la planificación territorial."
     )
 
-    # =============================
+    #=============================
     # Selección de mapa
     # =============================
 
@@ -355,17 +355,17 @@ with tab3:
         "Tipo de mapa",
         [
             "OpenStreetMap",
-            "CartoDB Claro",
-            "CartoDB Oscuro",
-            "Terrain"
+            "CartoDB",
+            "Satélite",
+            "Heatmap"
         ]
     )
 
     mapa_archivos = {
         "OpenStreetMap": "mapa_osm.html",
-        "CartoDB Claro": "mapa_carto_claro.html",
-        "CartoDB Oscuro": "mapa_carto_oscuro.html",
-        "Terrain": "mapa_terrain.html"
+        "CartoDB": "mapa_carto.html",
+        "Satélite": "mapa_satelital.html",
+        "Heatmap": "mapa_heatmap.html"
     }
 
     archivo_html = mapa_archivos[mapa_tipo]
