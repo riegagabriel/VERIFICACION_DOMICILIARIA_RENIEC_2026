@@ -27,7 +27,7 @@ with tab1:
     col3.metric("🏛️ Provincias", int(provs))
     col4.metric("📍 Distritos", int(dist))
     col5.metric("🗓️ Jornadas", int(fechas))
-    col6.metric("👷 Personal", int(personal)
+    col6.metric("👷 Personal", int(personal))
 
     st.markdown("---")
 
