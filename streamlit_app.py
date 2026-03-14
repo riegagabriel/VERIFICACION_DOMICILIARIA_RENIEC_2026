@@ -1,4 +1,5 @@
 # streamlit_app.py
+
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
@@ -29,8 +30,45 @@ def load_excel(path: str):
 # Cargar DataFrames
 # ========================
 value_box = load_excel("data/value_box.xlsx")
-situaciones_box = load_excel("data/box_situaciones.xlsx")
 tabla_distrito = load_excel("data/tabla_desagregada_distrito.xlsx")
+
+# ========================
+# FILTROS GLOBALES
+# ========================
+
+if not tabla_distrito.empty:
+
+    col1, col2 = st.columns(2)
+
+    with col1:
+        depto_filtro = st.selectbox(
+            "Departamento",
+            ["Todos"] + sorted(tabla_distrito["REG"].unique())
+        )
+
+    with col2:
+        if depto_filtro == "Todos":
+            distritos = sorted(tabla_distrito["DIST"].unique())
+        else:
+            distritos = sorted(
+                tabla_distrito[tabla_distrito["REG"] == depto_filtro]["DIST"].unique()
+            )
+
+        distrito_filtro = st.selectbox(
+            "Distrito",
+            ["Todos"] + distritos
+        )
+
+    df_filtrado = tabla_distrito.copy()
+
+    if depto_filtro != "Todos":
+        df_filtrado = df_filtrado[df_filtrado["REG"] == depto_filtro]
+
+    if distrito_filtro != "Todos":
+        df_filtrado = df_filtrado[df_filtrado["DIST"] == distrito_filtro]
+
+else:
+    df_filtrado = pd.DataFrame()
 
 # ========================
 # PESTAÑAS
@@ -76,13 +114,11 @@ with tab1:
     # ========================
     st.subheader("Situaciones de verificación")
 
-    if not situaciones_box.empty:
+    if not df_filtrado.empty:
 
-        situaciones = dict(zip(situaciones_box["Variable"], situaciones_box["Valor"]))
-
-        A = situaciones.get("tipo_a", 0)
-        B = situaciones.get("tipo_b", 0)
-        C = situaciones.get("tipo_c", 0)
+        A = df_filtrado["A"].sum()
+        B = df_filtrado["B"].sum()
+        C = df_filtrado["C"].sum()
 
         col1, col2, col3 = st.columns(3)
 
@@ -101,7 +137,7 @@ with tab1:
         st.plotly_chart(fig, use_container_width=True)
 
     else:
-        st.warning("No se encontró información de situaciones.")
+        st.warning("No hay datos para el filtro seleccionado.")
 
     st.markdown("---")
 
@@ -110,11 +146,11 @@ with tab1:
     # ========================
     st.subheader("📋 Avance por distrito")
 
-    if not tabla_distrito.empty:
+    if not df_filtrado.empty:
 
-        tabla_distrito["PORC_AVANCE"] = tabla_distrito["PORC_AVANCE"].round(2)
+        df_filtrado["PORC_AVANCE"] = df_filtrado["PORC_AVANCE"].round(2)
 
-        tabla_ordenada = tabla_distrito.sort_values(
+        tabla_ordenada = df_filtrado.sort_values(
             by="PORC_AVANCE",
             ascending=False
         )
@@ -127,13 +163,101 @@ with tab1:
             ]
 
         st.dataframe(
-            tabla_ordenada,
+            tabla_ordenada[
+                ["REG","PROV","DIST","ciudadanos_verificados","A","B","C","MAX_POB_VERIFICAR","PORC_AVANCE"]
+            ],
             use_container_width=True,
             hide_index=True
         )
 
     else:
         st.warning("No se encontró la tabla desagregada.")
+
+# ===========================================
+# TAB 2: MONITOREO POR DEPARTAMENTO
+# ===========================================
+with tab2:
+
+    st.subheader("📍 Avance por departamento")
+
+    if not tabla_distrito.empty:
+
+        deptos = ["Todos"] + sorted(tabla_distrito["REG"].unique())
+
+        depto = st.selectbox(
+            "Seleccionar departamento",
+            deptos
+        )
+
+        df = tabla_distrito.copy()
+
+        if depto != "Todos":
+            df = df[df["REG"] == depto]
+
+        df_bar = df.sort_values(
+            by="PORC_AVANCE",
+            ascending=False
+        ).head(15)
+
+        fig = px.bar(
+            df_bar,
+            x="PORC_AVANCE",
+            y="DIST",
+            orientation="h",
+            text="PORC_AVANCE",
+            title="Top distritos por avance"
+        )
+
+        fig.update_layout(
+            yaxis={'categoryorder':'total ascending'}
+        )
+
+        st.plotly_chart(fig, use_container_width=True)
+
+        st.markdown("---")
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+
+            st.subheader("🏆 Top 10 distritos con mayor avance")
+
+            top = df.sort_values(
+                by="PORC_AVANCE",
+                ascending=False
+            ).head(10)
+
+            st.dataframe(
+                top,
+                hide_index=True,
+                use_container_width=True
+            )
+
+        with col2:
+
+            st.subheader("⚠️ Distritos con menor avance")
+
+            bottom = df.sort_values(
+                by="PORC_AVANCE",
+                ascending=True
+            ).head(10)
+
+            st.dataframe(
+                bottom,
+                hide_index=True,
+                use_container_width=True
+            )
+
+# ===========================================
+# TAB 3: MAPA
+# ===========================================
+with tab3:
+
+    st.subheader("🗺️ Mapa de verificación")
+
+    st.info(
+        "Para visualizar el mapa se requiere un archivo con coordenadas de distritos."
+    )warning("No se encontró la tabla desagregada.")
 
 # ===========================================
 # TAB 2: MONITOREO POR DEPARTAMENTO
