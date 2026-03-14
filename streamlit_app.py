@@ -1,109 +1,79 @@
-import streamlit as st
-import pandas as pd
+# ====================================================
+# TAB 1
+# ====================================================
+with tab1:
 
-st.set_page_config(page_title="Verificación Domiciliaria 2026", layout="wide")
+    st.subheader("Indicadores")
 
-# -----------------------------
-# Cargar datos
-# -----------------------------
-@st.cache_data
-def load_data():
-    df = pd.read_csv("data3.csv")
-    return df
+    if not value_box.empty:
 
-data3 = load_data()
+        indicadores = dict(zip(value_box["Variable"], value_box["Valor"]))
 
-# limpiar type_situation
-data3["type_situation"] = data3["type_situation"].fillna("")
+        dnis = indicadores.get("ciudadanos_veri", 0)
+        deps = indicadores.get("departamentos", 0)
+        provs = indicadores.get("provincias", 0)
+        dist = indicadores.get("distritos", 0)
+        fechas = indicadores.get("fecha", 0)
+        personal = indicadores.get("encuestadores", 0)
 
-# -----------------------------
-# INDICADORES
-# -----------------------------
-st.title("📊 Verificación Domiciliaria RENIEC 2026")
+    else:
 
-total = data3["id_participant"].nunique()
-A = (data3["type_situation"] == "A").sum()
-B = (data3["type_situation"] == "B").sum()
-C = (data3["type_situation"] == "C").sum()
+        dnis = deps = provs = dist = fechas = personal = 0
 
-col1, col2, col3, col4 = st.columns(4)
+    col1,col2,col3,col4,col5,col6 = st.columns(6)
 
-col1.metric("Ciudadanos verificados", total)
-col2.metric("Situación A", A)
-col3.metric("Situación B", B)
-col4.metric("Situación C", C)
+    col1.metric("🆔 Ciudadanos Verificados", f"{int(dnis):,}")
+    col2.metric("🗺️ Departamentos", int(deps))
+    col3.metric("🏛️ Provincias", int(provs))
+    col4.metric("📍 Distritos", int(dist))
+    col5.metric("🗓️ Jornadas", int(fechas))
+    col6.metric("👷 Personal", int(personal)
 
-st.divider()
+    st.markdown("---")
 
-# -----------------------------
+# ========================
 # FILTROS
-# -----------------------------
-st.subheader("Filtros")
+# ========================
 
-col1, col2 = st.columns(2)
+    if not tabla_distrito.empty:
 
-deptos = ["Todos"] + sorted(data3["departamento_titular"].dropna().unique())
+        col1, col2 = st.columns(2)
 
-depto = col1.selectbox(
-    "Departamento",
-    deptos,
-    key="filtro_departamento"
-)
+        with col1:
 
-df_filtrado = data3.copy()
+            deptos = ["Todos"] + sorted(tabla_distrito["REG"].unique())
 
-if depto != "Todos":
-    df_filtrado = df_filtrado[df_filtrado["departamento_titular"] == depto]
+            depto = st.selectbox(
+                "Departamento",
+                deptos,
+                key="depto_tab1"
+            )
 
-distritos = ["Todos"] + sorted(df_filtrado["distrito_titular"].dropna().unique())
+        with col2:
 
-distrito = col2.selectbox(
-    "Distrito",
-    distritos,
-    key="filtro_distrito"
-)
+            if depto == "Todos":
+                distritos = sorted(tabla_distrito["DIST"].unique())
+            else:
+                distritos = sorted(
+                    tabla_distrito[tabla_distrito["REG"] == depto]["DIST"].unique()
+                )
 
-if distrito != "Todos":
-    df_filtrado = df_filtrado[df_filtrado["distrito_titular"] == distrito]
+            distrito = st.selectbox(
+                "Distrito",
+                ["Todos"] + distritos,
+                key="dist_tab1"
+            )
 
-st.divider()
+        df_filtrado = tabla_distrito.copy()
 
-# -----------------------------
-# TABLA DESAGREGADA
-# -----------------------------
-st.subheader("Tabla desagregada")
+        if depto != "Todos":
+            df_filtrado = df_filtrado[df_filtrado["REG"] == depto]
 
-tabla_desagregada = (
-    df_filtrado
-    .groupby(
-        ['departamento_titular','provincia_titular','distrito_titular','type_situation'],
-        dropna=False
-    )['id_participant']
-    .nunique()
-    .unstack(fill_value=0)
-    .reset_index()
-)
+        if distrito != "Todos":
+            df_filtrado = df_filtrado[df_filtrado["DIST"] == distrito]
 
-# asegurar columnas A B C
-for col in ["A", "B", "C"]:
-    if col not in tabla_desagregada.columns:
-        tabla_desagregada[col] = 0
+    else:
 
-tabla_desagregada = tabla_desagregada[
-    ['departamento_titular','provincia_titular','distrito_titular','A','B','C']
-]
+        df_filtrado = pd.DataFrame()
 
-st.dataframe(tabla_desagregada, use_container_width=True)
-
-# -----------------------------
-# DESCARGA
-# -----------------------------
-csv = tabla_desagregada.to_csv(index=False).encode("utf-8")
-
-st.download_button(
-    "⬇ Descargar tabla",
-    csv,
-    "tabla_verificacion.csv",
-    "text/csv",
-    key="download-csv"
-)
+    st.markdown("---")
