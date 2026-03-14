@@ -82,10 +82,11 @@ tab1, tab2, tab3 = st.tabs([
     "🗺️ Mapa"
 ])
 
-# ====================================================
-# TAB 1
-# ====================================================
 with tab1:
+
+    # ========================
+    # INDICADORES
+    # ========================
 
     st.subheader("Indicadores")
 
@@ -115,9 +116,57 @@ with tab1:
 
     st.markdown("---")
 
-# ========================
-# SITUACIONES
-# ========================
+    # ========================
+    # FILTROS
+    # ========================
+
+    st.subheader("Filtros")
+
+    if not tabla_distrito.empty:
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+
+            deptos = ["Todos"] + sorted(tabla_distrito["REG"].unique())
+
+            depto = st.selectbox(
+                "Departamento",
+                deptos
+            )
+
+        with col2:
+
+            if depto == "Todos":
+                distritos = sorted(tabla_distrito["DIST"].unique())
+            else:
+                distritos = sorted(
+                    tabla_distrito[tabla_distrito["REG"] == depto]["DIST"].unique()
+                )
+
+            distrito = st.selectbox(
+                "Distrito",
+                ["Todos"] + distritos
+            )
+
+        df_filtrado = tabla_distrito.copy()
+
+        if depto != "Todos":
+            df_filtrado = df_filtrado[df_filtrado["REG"] == depto]
+
+        if distrito != "Todos":
+            df_filtrado = df_filtrado[df_filtrado["DIST"] == distrito]
+
+    else:
+
+        df_filtrado = pd.DataFrame()
+
+    st.markdown("---")
+
+    # ========================
+    # SITUACIONES
+    # ========================
+
     st.subheader("Situaciones de verificación")
 
     if distrito == "Todos" and depto == "Todos":
@@ -155,9 +204,10 @@ with tab1:
 
     st.markdown("---")
 
-# ========================
-# TABLA DISTRITO
-# ========================
+    # ========================
+    # TABLA
+    # ========================
+
     st.subheader("📋 Avance por distrito")
 
     if not df_filtrado.empty:
