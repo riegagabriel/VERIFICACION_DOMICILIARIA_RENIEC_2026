@@ -198,10 +198,20 @@ with tab1:
                 "MAX_POB_VERIFICAR",
                 "PORC_AVANCE"
                 ]
-            ],
-            use_container_width=True,
-            hide_index=True
-        )
+            ].rename(columns={
+        "REG": "Departamento",
+        "PROV": "Provincia",
+        "DIST": "Distrito",
+        "ciudadanos_verificados": "Ciudadanos Verificados",
+        "A": "Tipo A",
+        "B": "Tipo B",
+        "C": "Tipo C",
+        "MAX_POB_VERIFICAR": "Población a Verificar",
+        "PORC_AVANCE": "% Avance"
+    }),
+    use_container_width=True,
+    hide_index=True
+)
 
     else:
 
