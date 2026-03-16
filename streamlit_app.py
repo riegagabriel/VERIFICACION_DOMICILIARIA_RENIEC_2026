@@ -150,7 +150,7 @@ with tab3:
         st.warning("No se encontró data_encuestadores.xlsx en la carpeta data/")
     else:
 
-        st.markdown("## 🔥 Monitoreo individual — avance diario por encuestador")
+        st.markdown("## Monitoreo individual — Avance diario por encuestador")
         st.markdown("Detalle de ciudadanos verificados por encuestador y jornada.")
 
         col1, col2 = st.columns(2)
