@@ -30,6 +30,14 @@ def load_excel(path):
 value_box = load_excel("data/value_box.xlsx")
 box_situaciones = load_excel("data/box_situaciones.xlsx")
 tabla_distrito = load_excel("data/tabla_desagregada_distrito.xlsx")
+data_dept = load_excel("data/data_total_departamentos.xlsx")
+data_dist = load_excel("data/data_distritos.xlsx")
+
+# Asegurar que 'fecha' sea datetime
+if not data_dept.empty:
+    data_dept['fecha'] = pd.to_datetime(data_dept['fecha'])
+if not data_dist.empty:
+    data_dist['fecha'] = pd.to_datetime(data_dist['fecha'])
 
 # ========================
 # TABS
@@ -293,44 +301,153 @@ with tab2:
         )
 
         fig.update_layout(
-            yaxis={'categoryorder':'total ascending'}
+            yaxis={'categoryorder': 'total ascending'}
         )
 
-        st.plotly_chart(fig,use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True)
 
         st.markdown("---")
 
-        col1,col2 = st.columns(2)
+        col1, col2 = st.columns(2)
 
         with col1:
-
             st.subheader("🏆 Top distritos")
-
-            top = df.sort_values(
-                by="PORC_AVANCE",
-                ascending=False
-            ).head(10)
-
-            st.dataframe(
-                top,
-                hide_index=True,
-                use_container_width=True
-            )
+            top = df.sort_values(by="PORC_AVANCE", ascending=False).head(10)
+            st.dataframe(top, hide_index=True, use_container_width=True)
 
         with col2:
-
             st.subheader("⚠️ Distritos con menor avance")
+            bottom = df.sort_values(by="PORC_AVANCE", ascending=True).head(10)
+            st.dataframe(bottom, hide_index=True, use_container_width=True)
 
-            bottom = df.sort_values(
-                by="PORC_AVANCE",
-                ascending=True
-            ).head(10)
+    st.markdown("---")
 
-            st.dataframe(
-                bottom,
-                hide_index=True,
-                use_container_width=True
-            )
+    # ========================
+    # GRÁFICO 1: TOTAL POR DEPARTAMENTO (líneas en el tiempo)
+    # ========================
+    st.subheader("📈 Evolución diaria por departamento")
+
+    if not data_dept.empty:
+
+        # Calcular total general por fecha
+        data_total_gral = data_dept.groupby('fecha')['ciudadanos_verificados'].sum().reset_index()
+        data_total_gral.columns = ['fecha', 'total_count']
+
+        fig_dept = go.Figure()
+
+        # Línea TOTAL GENERAL
+        fig_dept.add_trace(go.Scatter(
+            x=data_total_gral['fecha'],
+            y=data_total_gral['total_count'],
+            mode='lines+markers',
+            name='TOTAL GENERAL',
+            line=dict(color='red', width=3),
+            marker=dict(size=8),
+            hovertemplate='<b>TOTAL GENERAL</b><br>Fecha: %{x}<br>Ciudadanos: %{y}<extra></extra>'
+        ))
+
+        # Línea por cada departamento (ocultas por defecto)
+        for depto in sorted(data_dept['DEPARTAMENTO'].unique()):
+            df_d = data_dept[data_dept['DEPARTAMENTO'] == depto]
+            fig_dept.add_trace(go.Scatter(
+                x=df_d['fecha'],
+                y=df_d['ciudadanos_verificados'],
+                mode='lines+markers',
+                name=depto,
+                line=dict(width=1.5),
+                marker=dict(size=5),
+                visible='legendonly',
+                hovertemplate=f'<b>{depto}</b><br>Fecha: %{{x}}<br>Ciudadanos: %{{y}}<extra></extra>'
+            ))
+
+        fig_dept.update_layout(
+            title='Ciudadanos Verificados por Departamento y Fecha',
+            xaxis_title='Fecha',
+            yaxis_title='Ciudadanos Verificados',
+            hovermode='x unified',
+            legend=dict(
+                title='Departamentos (clic para mostrar/ocultar)',
+                yanchor="top", y=0.99,
+                xanchor="left", x=1.01
+            ),
+            height=500,
+            template='plotly_white'
+        )
+
+        st.plotly_chart(fig_dept, use_container_width=True)
+
+    else:
+        st.warning("No se encontró data_total_departamentos.xlsx")
+
+    st.markdown("---")
+
+    # ========================
+    # GRÁFICO 2: POR DISTRITO CON FILTRO DE DEPARTAMENTO
+    # ========================
+    st.subheader("📍 Evolución diaria por distrito")
+
+    if not data_dist.empty:
+
+        departamentos = sorted(data_dist['DEPARTAMENTO'].unique())
+
+        depto_sel = st.selectbox(
+            "Seleccionar departamento",
+            departamentos,
+            key="depto_dist_graf"
+        )
+
+        # Filtrar por departamento seleccionado
+        df_dist_sel = data_dist[data_dist['DEPARTAMENTO'] == depto_sel]
+
+        # Total del departamento por fecha
+        df_total_dept = df_dist_sel.groupby('fecha')['ciudadanos_verificados'].sum().reset_index()
+        df_total_dept.columns = ['fecha', 'total_count']
+
+        fig_dist = go.Figure()
+
+        # Línea TOTAL del departamento
+        fig_dist.add_trace(go.Scatter(
+            x=df_total_dept['fecha'],
+            y=df_total_dept['total_count'],
+            mode='lines+markers',
+            name=f'TOTAL {depto_sel}',
+            line=dict(color='red', width=3),
+            marker=dict(size=8),
+            hovertemplate=f'<b>TOTAL {depto_sel}</b><br>Fecha: %{{x}}<br>Ciudadanos: %{{y}}<extra></extra>'
+        ))
+
+        # Línea por cada distrito (ocultas por defecto)
+        for dist in sorted(df_dist_sel['DISTRITO'].unique()):
+            df_d = df_dist_sel[df_dist_sel['DISTRITO'] == dist]
+            fig_dist.add_trace(go.Scatter(
+                x=df_d['fecha'],
+                y=df_d['ciudadanos_verificados'],
+                mode='lines+markers',
+                name=dist,
+                line=dict(width=1.5),
+                marker=dict(size=5),
+                visible='legendonly',
+                hovertemplate=f'<b>{dist}</b><br>Fecha: %{{x}}<br>Ciudadanos: %{{y}}<extra></extra>'
+            ))
+
+        fig_dist.update_layout(
+            title=f'Ciudadanos Verificados por Distrito — {depto_sel}',
+            xaxis_title='Fecha',
+            yaxis_title='Ciudadanos Verificados',
+            hovermode='x unified',
+            legend=dict(
+                title='Distritos (clic para mostrar/ocultar)',
+                yanchor="top", y=0.99,
+                xanchor="left", x=1.01
+            ),
+            height=500,
+            template='plotly_white'
+        )
+
+        st.plotly_chart(fig_dist, use_container_width=True)
+
+    else:
+        st.warning("No se encontró data_distritos.xlsx")
 
 # ====================================================
 # TAB 3
