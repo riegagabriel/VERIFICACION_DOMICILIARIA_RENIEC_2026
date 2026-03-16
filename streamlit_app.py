@@ -26,7 +26,6 @@ def load_excel(path):
     except:
         return pd.DataFrame()
 
-
 @st.cache_data
 def load_csv(path):
     try:
@@ -34,21 +33,19 @@ def load_csv(path):
     except:
         return pd.DataFrame()
 
-
 # ========================
 # CARGAR DATA
 # ========================
-value_box = load_excel("data/value_box.xlsx")
+value_box       = load_excel("data/value_box.xlsx")
 box_situaciones = load_excel("data/box_situaciones.xlsx")
-tabla_distrito = load_excel("data/tabla_desagregada_distrito.xlsx")
-data_dept = load_excel("data/data_total_departamentos.xlsx")
-data_dist = load_excel("data/data_distritos.xlsx")
-data_enc = load_excel("data/data_encuestadores.xlsx")
+tabla_distrito  = load_excel("data/tabla_desagregada_distrito.xlsx")
+data_dept       = load_excel("data/data_total_departamentos.xlsx")
+data_dist       = load_excel("data/data_distritos.xlsx")
+data_enc        = load_excel("data/data_encuestadores.xlsx")
 
 # Asegurar que 'fecha' sea datetime
 if not data_dept.empty:
     data_dept['fecha'] = pd.to_datetime(data_dept['fecha'])
-
 if not data_dist.empty:
     data_dist['fecha'] = pd.to_datetime(data_dist['fecha'])
 
@@ -67,37 +64,36 @@ tab1, tab2, tab3, tab4 = st.tabs([
 # ====================================================
 with tab1:
 
+    # --- Indicadores ---
     st.subheader("Indicadores")
 
     if not value_box.empty:
         indicadores = dict(zip(value_box["Variable"], value_box["Valor"]))
-        dnis = indicadores.get("ciudadanos_veri", 0)
-        deps = indicadores.get("departamentos", 0)
-        provs = indicadores.get("provincias", 0)
-        dist = indicadores.get("distritos", 0)
-        fechas = indicadores.get("fecha", 0)
+        dnis     = indicadores.get("ciudadanos_veri", 0)
+        deps     = indicadores.get("departamentos", 0)
+        provs    = indicadores.get("provincias", 0)
+        dist     = indicadores.get("distritos", 0)
+        fechas   = indicadores.get("fecha", 0)
         personal = indicadores.get("encuestadores", 0)
     else:
         dnis = deps = provs = dist = fechas = personal = 0
 
     col1, col2, col3, col4, col5, col6 = st.columns(6)
-
     col1.metric("🆔 Ciudadanos Verificados", f"{int(dnis):,}")
-    col2.metric("🗺️ Departamentos", int(deps))
-    col3.metric("🏛️ Provincias", int(provs))
-    col4.metric("📍 Distritos", int(dist))
-    col5.metric("🗓️ Jornadas", int(fechas))
-    col6.metric("👷 Personal", int(personal))
+    col2.metric("🗺️ Departamentos",          int(deps))
+    col3.metric("🏛️ Provincias",             int(provs))
+    col4.metric("📍 Distritos",              int(dist))
+    col5.metric("🗓️ Jornadas",              int(fechas))
+    col6.metric("👷 Personal",               int(personal))
 
     # --- Gauge ---
-    POB_TOTAL = 65137
+    POB_TOTAL           = 65137
     porc_avance_general = round((dnis / POB_TOTAL) * 100, 2) if POB_TOTAL > 0 else 0
-    pendientes = POB_TOTAL - int(dnis)
+    pendientes          = POB_TOTAL - int(dnis)
 
     col_gauge, col_resumen = st.columns([2, 1])
 
     with col_gauge:
-
         fig_gauge = go.Figure(go.Indicator(
             mode="gauge+number+delta",
             value=porc_avance_general,
@@ -108,8 +104,8 @@ with tab1:
                 "axis": {"range": [0, 100], "ticksuffix": "%"},
                 "bar": {"color": "#2ecc71"},
                 "steps": [
-                    {"range": [0, 33], "color": "#f9e4e4"},
-                    {"range": [33, 66], "color": "#fef9e7"},
+                    {"range": [0, 33],   "color": "#f9e4e4"},
+                    {"range": [33, 66],  "color": "#fef9e7"},
                     {"range": [66, 100], "color": "#eafaf1"},
                 ],
                 "threshold": {
@@ -119,25 +115,105 @@ with tab1:
                 }
             }
         ))
-
-        fig_gauge.update_layout(
-            height=300,
-            margin=dict(t=60, b=20, l=30, r=30)
-        )
-
+        fig_gauge.update_layout(height=300, margin=dict(t=60, b=20, l=30, r=30))
         st.plotly_chart(fig_gauge, use_container_width=True)
 
     with col_resumen:
-
         st.markdown("### Resumen de avance general")
         st.markdown("---")
+        st.metric("🎯 Meta total",    f"{POB_TOTAL:,}")
+        st.metric("✅ Verificados",    f"{int(dnis):,}")
+        st.metric("⏳ Pendientes",     f"{pendientes:,}")
+        st.metric("📈 % Completado",   f"{porc_avance_general}%")
 
-        st.metric("🎯 Meta total", f"{POB_TOTAL:,}")
-        st.metric("✅ Verificados", f"{int(dnis):,}")
-        st.metric("⏳ Pendientes", f"{pendientes:,}")
-        st.metric("📈 % Completado", f"{porc_avance_general}%")
+    # --- Filtros ---
+    st.subheader("Filtros")
+
+    if not tabla_distrito.empty:
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            deptos = ["Todos"] + sorted(tabla_distrito["REG"].unique())
+            depto  = st.selectbox("Departamento", deptos, key="filtro_depto")
+
+        with col2:
+            if depto == "Todos":
+                distritos = sorted(tabla_distrito["DIST"].unique())
+            else:
+                distritos = sorted(
+                    tabla_distrito[tabla_distrito["REG"] == depto]["DIST"].unique()
+                )
+            distrito = st.selectbox("Distrito", ["Todos"] + distritos, key="filtro_distrito")
+
+        df_filtrado = tabla_distrito.copy()
+        if depto    != "Todos": df_filtrado = df_filtrado[df_filtrado["REG"]  == depto]
+        if distrito != "Todos": df_filtrado = df_filtrado[df_filtrado["DIST"] == distrito]
+
+    else:
+        df_filtrado = pd.DataFrame()
+        depto = distrito = "Todos"
 
     st.markdown("---")
+
+    # --- Situaciones ---
+    st.subheader("Situaciones de verificación")
+
+    if distrito == "Todos" and depto == "Todos":
+        situaciones = dict(zip(box_situaciones["Variable"], box_situaciones["Valor"]))
+        A = situaciones.get("tipo_a", 0)
+        B = situaciones.get("tipo_b", 0)
+        C = situaciones.get("tipo_c", 0)
+    else:
+        A = df_filtrado["A"].sum()
+        B = df_filtrado["B"].sum()
+        C = df_filtrado["C"].sum()
+
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Tipo A", f"{int(A):,}")
+    col2.metric("Tipo B", f"{int(B):,}")
+    col3.metric("Tipo C", f"{int(C):,}")
+
+    fig_pie = go.Figure(data=[go.Pie(
+        labels=["Tipo A", "Tipo B", "Tipo C"],
+        values=[A, B, C],
+        hole=.55
+    )])
+    fig_pie.update_layout(height=400)
+    st.plotly_chart(fig_pie, use_container_width=True)
+
+    st.markdown("---")
+
+    # --- Tabla distrito ---
+    st.subheader("📋 Avance por distrito")
+
+    if not df_filtrado.empty:
+        df_filtrado["PORC_AVANCE"] = df_filtrado["PORC_AVANCE"].round(2)
+        tabla  = df_filtrado.sort_values(by="PORC_AVANCE", ascending=False)
+        buscar = st.text_input("🔎 Buscar distrito")
+
+        if buscar:
+            tabla = tabla[tabla["DIST"].str.contains(buscar, case=False)]
+
+        st.dataframe(
+            tabla[[
+                "REG", "PROV", "DIST",
+                "ciudadanos_verificados", "A", "B", "C",
+                "MAX_POB_VERIFICAR", "PORC_AVANCE"
+            ]].rename(columns={
+                "REG": "Departamento", "PROV": "Provincia", "DIST": "Distrito",
+                "ciudadanos_verificados": "Ciudadanos Verificados",
+                "A": "Tipo A", "B": "Tipo B", "C": "Tipo C",
+                "MAX_POB_VERIFICAR": "Población a Verificar",
+                "PORC_AVANCE": "% Avance"
+            }),
+            use_container_width=True,
+            hide_index=True
+        )
+    else:
+        st.warning("No se encontró la tabla desagregada.")
+
+# (continúa exactamente igual…)
 
 # ====================================================
 # TAB 3: MONITOREO POR ENCUESTADOR
@@ -150,33 +226,31 @@ with tab3:
         st.warning("No se encontró data_encuestadores.xlsx en la carpeta data/")
     else:
 
-        st.markdown("## Monitoreo individual — Avance diario por encuestador")
+        st.markdown("## 🔥 Monitoreo individual — avance diario por encuestador")
         st.markdown("Detalle de ciudadanos verificados por encuestador y jornada.")
 
         col1, col2 = st.columns(2)
 
         with col1:
-            deps_hm = sorted(data_enc['REG'].dropna().unique())
+            deps_hm    = sorted(data_enc['REG'].dropna().unique())
             dep_hm_sel = st.selectbox("Departamento", deps_hm, key="dep_hm")
 
         with col2:
-            dists_hm = sorted(data_enc[data_enc['REG'] == dep_hm_sel]['DIST'].dropna().unique())
+            dists_hm    = sorted(data_enc[data_enc['REG'] == dep_hm_sel]['DIST'].dropna().unique())
             dist_hm_sel = st.selectbox("Distrito", dists_hm, key="dist_hm")
 
         df_hm_f = data_enc[
-            (data_enc['REG'] == dep_hm_sel) &
+            (data_enc['REG']  == dep_hm_sel) &
             (data_enc['DIST'] == dist_hm_sel)
         ]
 
         if df_hm_f.empty:
             st.warning("No hay datos para el distrito seleccionado.")
-
         else:
 
             # Crosstab: filas = encuestador, columnas = fecha
             crosstab = (
-                df_hm_f
-                .groupby(['nombre_encuestador', 'fecha'])['ciudadanos_verificados']
+                df_hm_f.groupby(['nombre_encuestador', 'fecha'])['ciudadanos_verificados']
                 .count()
                 .unstack(fill_value=0)
                 .sort_index()
@@ -197,24 +271,22 @@ with tab3:
 
             zmax_val = int(crosstab.values.max()) if crosstab.values.max() > 0 else 1
 
-            fig_hm = go.Figure(
-                data=go.Heatmap(
-                    z=crosstab.values,
-                    x=x_labels,
-                    y=crosstab.index.astype(str),
-                    text=annot,
-                    texttemplate="%{text}",
-                    colorscale="YlGnBu",
-                    zmin=0,
-                    zmax=zmax_val,
-                    colorbar=dict(title="Verificados"),
-                    hovertemplate=(
-                        'Encuestador: %{y}<br>'
-                        'Fecha: %{x}<br>'
-                        'Verificados: %{z}<extra></extra>'
-                    )
+            fig_hm = go.Figure(data=go.Heatmap(
+                z=crosstab.values,
+                x=x_labels,
+                y=crosstab.index.astype(str),
+                text=annot,
+                texttemplate="%{text}",
+                colorscale="YlGnBu",
+                zmin=0,
+                zmax=zmax_val,
+                colorbar=dict(title="Verificados"),
+                hovertemplate=(
+                    'Encuestador: %{y}<br>'
+                    'Fecha: %{x}<br>'
+                    'Verificados: %{z}<extra></extra>'
                 )
-            )
+            ))
 
             fig_hm.update_layout(
                 title=f'Heatmap de avance diario — {dist_hm_sel}',
@@ -224,7 +296,6 @@ with tab3:
                 template='plotly_white',
                 margin=dict(l=200)
             )
-
             fig_hm.update_yaxes(automargin=True)
 
             st.plotly_chart(fig_hm, use_container_width=True)
