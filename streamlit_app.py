@@ -41,7 +41,7 @@ box_situaciones = load_excel("data/box_situaciones.xlsx")
 tabla_distrito  = load_excel("data/tabla_desagregada_distrito.xlsx")
 data_dept       = load_excel("data/data_total_departamentos.xlsx")
 data_dist       = load_excel("data/data_distritos.xlsx")
-data_enc        = load_csv("data/data_encuestadores.xlsx")
+data_enc        = load_excel("data/data_encuestadores.xlsx")
 
 # Asegurar que 'fecha' sea datetime
 if not data_dept.empty:
