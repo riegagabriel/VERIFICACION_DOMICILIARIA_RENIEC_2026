@@ -395,7 +395,7 @@ with tab3:
 
         df_total_enc = (
             df_enc_f.groupby('nombre_encuestador')['ciudadanos_verificados']
-            .sum()
+            .count()
             .reset_index()
             .rename(columns={'ciudadanos_verificados': 'total_verificados'})
             .sort_values('total_verificados', ascending=False)
@@ -464,12 +464,12 @@ with tab3:
             st.warning("No hay datos para el distrito seleccionado.")
         else:
             # Crosstab: filas = encuestador, columnas = fecha
-            crosstab = (
-                df_hm_f.groupby(['nombre_encuestador', 'fecha'])['ciudadanos_verificados']
-                .sum()
-                .unstack(fill_value=0)
-                .sort_index()
-            )
+           crosstab = (
+            df_hm_f.groupby(['nombre_encuestador', 'fecha'])['ciudadanos_verificados']
+            .count()
+            .unstack(fill_value=0)
+            .sort_index()
+        )
 
             # Tabla con totales
             crosstab_display = crosstab.copy()
