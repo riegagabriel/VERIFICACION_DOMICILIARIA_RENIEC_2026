@@ -268,60 +268,6 @@ with tab1:
 # TAB 2
 # ====================================================
 with tab2:
-
-    st.subheader("📍 Avance por departamento")
-
-    if not tabla_distrito.empty:
-
-        deptos = ["Todos"] + sorted(tabla_distrito["REG"].unique())
-
-        depto2 = st.selectbox(
-            "Seleccionar departamento",
-            deptos,
-            key="depto_tab2"
-        )
-
-        df = tabla_distrito.copy()
-
-        if depto2 != "Todos":
-            df = df[df["REG"] == depto2]
-
-        df_bar = df.sort_values(
-            by="PORC_AVANCE",
-            ascending=False
-        ).head(15)
-
-        fig = px.bar(
-            df_bar,
-            x="PORC_AVANCE",
-            y="DIST",
-            orientation="h",
-            text="PORC_AVANCE",
-            title="Top distritos por avance"
-        )
-
-        fig.update_layout(
-            yaxis={'categoryorder': 'total ascending'}
-        )
-
-        st.plotly_chart(fig, use_container_width=True)
-
-        st.markdown("---")
-
-        col1, col2 = st.columns(2)
-
-        with col1:
-            st.subheader("🏆 Top distritos")
-            top = df.sort_values(by="PORC_AVANCE", ascending=False).head(10)
-            st.dataframe(top, hide_index=True, use_container_width=True)
-
-        with col2:
-            st.subheader("⚠️ Distritos con menor avance")
-            bottom = df.sort_values(by="PORC_AVANCE", ascending=True).head(10)
-            st.dataframe(bottom, hide_index=True, use_container_width=True)
-
-    st.markdown("---")
-
     # ========================
     # GRÁFICO 1: TOTAL POR DEPARTAMENTO (líneas en el tiempo)
     # ========================
