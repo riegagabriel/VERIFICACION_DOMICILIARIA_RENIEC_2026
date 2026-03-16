@@ -409,7 +409,7 @@ with tab3:
         # ============================================================
         # SECCIÓN A: RENDIMIENTO TOTAL POR ENCUESTADOR
         # ============================================================
-        st.markdown("## 📊 Rendimiento total por encuestador")
+        st.markdown("##  Rendimiento total por encuestador")
         st.markdown("Registros acumulados durante toda la actividad, filtrado por distrito.")
 
         col1, col2 = st.columns(2)
@@ -480,7 +480,7 @@ with tab3:
         # ============================================================
         # SECCIÓN B: MONITOREO INDIVIDUAL — HEATMAP DIARIO
         # ============================================================
-        st.markdown("## 🔥 Monitoreo individual — avance diario por encuestador")
+        st.markdown("##  Monitoreo individual — avance diario por encuestador")
         st.markdown("Detalle de ciudadanos verificados por encuestador y jornada.")
 
         col1, col2 = st.columns(2)
