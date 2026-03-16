@@ -369,7 +369,7 @@ with tab3:
     st.subheader("👤 Monitoreo por encuestador")
 
     if data_enc.empty:
-        st.warning("No se encontró data_encuestadores.csv en la carpeta data/")
+        st.warning("No se encontró data_encuestadores.xlsx en la carpeta data/")
     else:
 
         # ============================================================
