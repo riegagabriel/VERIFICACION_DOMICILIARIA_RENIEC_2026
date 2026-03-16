@@ -48,6 +48,8 @@ if not data_dept.empty:
     data_dept['fecha'] = pd.to_datetime(data_dept['fecha'])
 if not data_dist.empty:
     data_dist['fecha'] = pd.to_datetime(data_dist['fecha'])
+if not data_enc.empty:
+    data_enc['fecha'] = pd.to_datetime(data_enc['fecha'])
 
 # ========================
 # TABS
@@ -83,7 +85,7 @@ with tab1:
     col2.metric("🗺️ Departamentos",          int(deps))
     col3.metric("🏛️ Provincias",             int(provs))
     col4.metric("📍 Distritos",              int(dist))
-    col5.metric("🗓️ Jornadas",              int(fechas))
+    col5.metric("🗓️ Jornadas",               int(fechas))
     col6.metric("👷 Personal",               int(personal))
 
     # --- Gauge ---
@@ -121,10 +123,10 @@ with tab1:
     with col_resumen:
         st.markdown("### Resumen de avance general")
         st.markdown("---")
-        st.metric("🎯 Meta total",    f"{POB_TOTAL:,}")
-        st.metric("✅ Verificados",    f"{int(dnis):,}")
-        st.metric("⏳ Pendientes",     f"{pendientes:,}")
-        st.metric("📈 % Completado",   f"{porc_avance_general}%")
+        st.metric("🎯 Meta total",   f"{POB_TOTAL:,}")
+        st.metric("✅ Verificados",   f"{int(dnis):,}")
+        st.metric("⏳ Pendientes",    f"{pendientes:,}")
+        st.metric("📈 % Completado",  f"{porc_avance_general}%")
 
     # --- Filtros ---
     st.subheader("Filtros")
@@ -147,8 +149,10 @@ with tab1:
             distrito = st.selectbox("Distrito", ["Todos"] + distritos, key="filtro_distrito")
 
         df_filtrado = tabla_distrito.copy()
-        if depto    != "Todos": df_filtrado = df_filtrado[df_filtrado["REG"]  == depto]
-        if distrito != "Todos": df_filtrado = df_filtrado[df_filtrado["DIST"] == distrito]
+        if depto    != "Todos":
+            df_filtrado = df_filtrado[df_filtrado["REG"]  == depto]
+        if distrito != "Todos":
+            df_filtrado = df_filtrado[df_filtrado["DIST"] == distrito]
 
     else:
         df_filtrado = pd.DataFrame()
@@ -201,11 +205,15 @@ with tab1:
                 "ciudadanos_verificados", "A", "B", "C",
                 "MAX_POB_VERIFICAR", "PORC_AVANCE"
             ]].rename(columns={
-                "REG": "Departamento", "PROV": "Provincia", "DIST": "Distrito",
+                "REG":                    "Departamento",
+                "PROV":                   "Provincia",
+                "DIST":                   "Distrito",
                 "ciudadanos_verificados": "Ciudadanos Verificados",
-                "A": "Tipo A", "B": "Tipo B", "C": "Tipo C",
-                "MAX_POB_VERIFICAR": "Población a Verificar",
-                "PORC_AVANCE": "% Avance"
+                "A":                      "Tipo A",
+                "B":                      "Tipo B",
+                "C":                      "Tipo C",
+                "MAX_POB_VERIFICAR":      "Población a Verificar",
+                "PORC_AVANCE":            "% Avance"
             }),
             use_container_width=True,
             hide_index=True
@@ -213,7 +221,178 @@ with tab1:
     else:
         st.warning("No se encontró la tabla desagregada.")
 
-# (continúa exactamente igual…)
+
+# ====================================================
+# TAB 2: MONITOREO POR DEPARTAMENTO
+# ====================================================
+with tab2:
+
+    st.subheader("📍 Avance por departamento")
+
+    if not tabla_distrito.empty:
+
+        deptos2 = ["Todos"] + sorted(tabla_distrito["REG"].unique())
+        depto2  = st.selectbox("Seleccionar departamento", deptos2, key="depto_tab2")
+        df_tab2 = tabla_distrito.copy()
+
+        if depto2 != "Todos":
+            df_tab2 = df_tab2[df_tab2["REG"] == depto2]
+
+        df_bar = df_tab2.sort_values(by="PORC_AVANCE", ascending=False).head(15)
+
+        fig_bar = px.bar(
+            df_bar,
+            x="PORC_AVANCE",
+            y="DIST",
+            orientation="h",
+            text="PORC_AVANCE",
+            title="Top distritos por avance"
+        )
+        fig_bar.update_layout(yaxis={'categoryorder': 'total ascending'})
+        st.plotly_chart(fig_bar, use_container_width=True)
+
+        st.markdown("---")
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            st.subheader("🏆 Top distritos")
+            st.dataframe(
+                df_tab2.sort_values(by="PORC_AVANCE", ascending=False).head(10),
+                hide_index=True,
+                use_container_width=True
+            )
+
+        with col2:
+            st.subheader("⚠️ Distritos con menor avance")
+            st.dataframe(
+                df_tab2.sort_values(by="PORC_AVANCE", ascending=True).head(10),
+                hide_index=True,
+                use_container_width=True
+            )
+
+    st.markdown("---")
+
+    # --- Evolución diaria total por departamento ---
+    st.subheader("📈 Evolución diaria por departamento")
+
+    if not data_dept.empty:
+
+        data_total_gral = (
+            data_dept.groupby('fecha')['ciudadanos_verificados']
+            .sum()
+            .reset_index()
+        )
+        data_total_gral.columns = ['fecha', 'total_count']
+
+        fig_dept = go.Figure()
+
+        fig_dept.add_trace(go.Scatter(
+            x=data_total_gral['fecha'],
+            y=data_total_gral['total_count'],
+            mode='lines+markers',
+            name='TOTAL GENERAL',
+            line=dict(color='red', width=3),
+            marker=dict(size=8),
+            hovertemplate='<b>TOTAL GENERAL</b><br>Fecha: %{x}<br>Ciudadanos: %{y}<extra></extra>'
+        ))
+
+        for dep in sorted(data_dept['DEPARTAMENTO'].unique()):
+            df_d = data_dept[data_dept['DEPARTAMENTO'] == dep]
+            fig_dept.add_trace(go.Scatter(
+                x=df_d['fecha'],
+                y=df_d['ciudadanos_verificados'],
+                mode='lines+markers',
+                name=dep,
+                line=dict(width=1.5),
+                marker=dict(size=5),
+                visible='legendonly',
+                hovertemplate=f'<b>{dep}</b><br>Fecha: %{{x}}<br>Ciudadanos: %{{y}}<extra></extra>'
+            ))
+
+        fig_dept.update_layout(
+            title='Ciudadanos Verificados por Departamento y Fecha',
+            xaxis_title='Fecha',
+            yaxis_title='Ciudadanos Verificados',
+            hovermode='x unified',
+            legend=dict(
+                title='Departamentos (clic para mostrar/ocultar)',
+                yanchor="top", y=0.99,
+                xanchor="left", x=1.01
+            ),
+            height=500,
+            template='plotly_white'
+        )
+        st.plotly_chart(fig_dept, use_container_width=True)
+
+    else:
+        st.warning("No se encontró data_total_departamentos.xlsx")
+
+    st.markdown("---")
+
+    # --- Evolución diaria por distrito con filtro ---
+    st.subheader("📍 Evolución diaria por distrito")
+
+    if not data_dist.empty:
+
+        departamentos_dist = sorted(data_dist['DEPARTAMENTO'].unique())
+        depto_sel          = st.selectbox(
+            "Seleccionar departamento",
+            departamentos_dist,
+            key="depto_dist_graf"
+        )
+
+        df_dist_sel  = data_dist[data_dist['DEPARTAMENTO'] == depto_sel]
+        df_total_dep = (
+            df_dist_sel.groupby('fecha')['ciudadanos_verificados']
+            .sum()
+            .reset_index()
+        )
+        df_total_dep.columns = ['fecha', 'total_count']
+
+        fig_dist = go.Figure()
+
+        fig_dist.add_trace(go.Scatter(
+            x=df_total_dep['fecha'],
+            y=df_total_dep['total_count'],
+            mode='lines+markers',
+            name=f'TOTAL {depto_sel}',
+            line=dict(color='red', width=3),
+            marker=dict(size=8),
+            hovertemplate=f'<b>TOTAL {depto_sel}</b><br>Fecha: %{{x}}<br>Ciudadanos: %{{y}}<extra></extra>'
+        ))
+
+        for dist_name in sorted(df_dist_sel['DISTRITO'].unique()):
+            df_d = df_dist_sel[df_dist_sel['DISTRITO'] == dist_name]
+            fig_dist.add_trace(go.Scatter(
+                x=df_d['fecha'],
+                y=df_d['ciudadanos_verificados'],
+                mode='lines+markers',
+                name=dist_name,
+                line=dict(width=1.5),
+                marker=dict(size=5),
+                visible='legendonly',
+                hovertemplate=f'<b>{dist_name}</b><br>Fecha: %{{x}}<br>Ciudadanos: %{{y}}<extra></extra>'
+            ))
+
+        fig_dist.update_layout(
+            title=f'Ciudadanos Verificados por Distrito — {depto_sel}',
+            xaxis_title='Fecha',
+            yaxis_title='Ciudadanos Verificados',
+            hovermode='x unified',
+            legend=dict(
+                title='Distritos (clic para mostrar/ocultar)',
+                yanchor="top", y=0.99,
+                xanchor="left", x=1.01
+            ),
+            height=500,
+            template='plotly_white'
+        )
+        st.plotly_chart(fig_dist, use_container_width=True)
+
+    else:
+        st.warning("No se encontró data_distritos.xlsx")
+
 
 # ====================================================
 # TAB 3: MONITOREO POR ENCUESTADOR
@@ -224,8 +403,83 @@ with tab3:
 
     if data_enc.empty:
         st.warning("No se encontró data_encuestadores.xlsx en la carpeta data/")
+
     else:
 
+        # ============================================================
+        # SECCIÓN A: RENDIMIENTO TOTAL POR ENCUESTADOR
+        # ============================================================
+        st.markdown("## 📊 Rendimiento total por encuestador")
+        st.markdown("Registros acumulados durante toda la actividad, filtrado por distrito.")
+
+        col1, col2 = st.columns(2)
+
+        with col1:
+            deps_enc    = sorted(data_enc['REG'].dropna().unique())
+            dep_enc_sel = st.selectbox("Departamento", deps_enc, key="dep_enc_total")
+
+        with col2:
+            dists_enc = sorted(
+                data_enc[data_enc['REG'] == dep_enc_sel]['DIST'].dropna().unique()
+            )
+            dist_enc_sel = st.selectbox("Distrito", dists_enc, key="dist_enc_total")
+
+        df_enc_f = data_enc[
+            (data_enc['REG']  == dep_enc_sel) &
+            (data_enc['DIST'] == dist_enc_sel)
+        ]
+
+        df_total_enc = (
+            df_enc_f.groupby('nombre_encuestador')['ciudadanos_verificados']
+            .count()
+            .reset_index()
+            .rename(columns={'ciudadanos_verificados': 'total_verificados'})
+            .sort_values('total_verificados', ascending=False)
+        )
+
+        if df_total_enc.empty:
+            st.warning("No hay datos para el distrito seleccionado.")
+
+        else:
+
+            col_tabla, col_graf = st.columns([1, 2])
+
+            with col_tabla:
+                st.markdown(f"**{dist_enc_sel} — {dep_enc_sel}**")
+                st.dataframe(
+                    df_total_enc.rename(columns={
+                        'nombre_encuestador': 'Encuestador',
+                        'total_verificados':  'Total Verificados'
+                    }),
+                    hide_index=True,
+                    use_container_width=True
+                )
+
+            with col_graf:
+                fig_enc = go.Figure()
+                fig_enc.add_trace(go.Bar(
+                    x=df_total_enc['total_verificados'],
+                    y=df_total_enc['nombre_encuestador'],
+                    orientation='h',
+                    marker=dict(color='#4A90E2'),
+                    hovertemplate='<b>%{y}</b><br>Total: %{x}<extra></extra>'
+                ))
+                fig_enc.update_layout(
+                    title=f'Registros totales por encuestador — {dist_enc_sel}',
+                    xaxis_title='Ciudadanos Verificados',
+                    yaxis_title='',
+                    yaxis=dict(categoryorder='total ascending'),
+                    height=max(400, len(df_total_enc) * 35),
+                    template='plotly_white',
+                    margin=dict(l=200)
+                )
+                st.plotly_chart(fig_enc, use_container_width=True)
+
+        st.markdown("---")
+
+        # ============================================================
+        # SECCIÓN B: MONITOREO INDIVIDUAL — HEATMAP DIARIO
+        # ============================================================
         st.markdown("## 🔥 Monitoreo individual — avance diario por encuestador")
         st.markdown("Detalle de ciudadanos verificados por encuestador y jornada.")
 
@@ -236,7 +490,9 @@ with tab3:
             dep_hm_sel = st.selectbox("Departamento", deps_hm, key="dep_hm")
 
         with col2:
-            dists_hm    = sorted(data_enc[data_enc['REG'] == dep_hm_sel]['DIST'].dropna().unique())
+            dists_hm = sorted(
+                data_enc[data_enc['REG'] == dep_hm_sel]['DIST'].dropna().unique()
+            )
             dist_hm_sel = st.selectbox("Distrito", dists_hm, key="dist_hm")
 
         df_hm_f = data_enc[
@@ -246,6 +502,7 @@ with tab3:
 
         if df_hm_f.empty:
             st.warning("No hay datos para el distrito seleccionado.")
+
         else:
 
             # Crosstab: filas = encuestador, columnas = fecha
@@ -256,6 +513,7 @@ with tab3:
                 .sort_index()
             )
 
+            # Tabla con totales
             crosstab_display = crosstab.copy()
             crosstab_display.columns = crosstab_display.columns.strftime('%d/%m/%Y')
             crosstab_display['TOTAL'] = crosstab_display.sum(axis=1)
@@ -264,9 +522,11 @@ with tab3:
             st.markdown(f"**Avance diario — {dist_hm_sel} ({dep_hm_sel})**")
             st.dataframe(crosstab_display, use_container_width=True)
 
+            # Heatmap
             x_labels = crosstab.columns.strftime('%d/%m/%Y')
 
-            annot = crosstab.values.astype(str)
+            # Anotaciones: mostrar 0 como vacío
+            annot               = crosstab.values.astype(str)
             annot[annot == '0'] = ''
 
             zmax_val = int(crosstab.values.max()) if crosstab.values.max() > 0 else 1
@@ -299,3 +559,38 @@ with tab3:
             fig_hm.update_yaxes(automargin=True)
 
             st.plotly_chart(fig_hm, use_container_width=True)
+
+
+# ====================================================
+# TAB 4: MAPA
+# ====================================================
+with tab4:
+
+    st.subheader("🗺️ Mapa de verificación")
+    st.info("Seleccione el tipo de mapa para visualizar la planificación territorial.")
+
+    mapa_tipo = st.selectbox(
+        "Tipo de mapa",
+        ["OpenStreetMap", "CartoDB", "Satélite", "Heatmap"]
+    )
+
+    mapa_archivos = {
+        "OpenStreetMap": "mapa_osm.html",
+        "CartoDB":       "mapa_carto.html",
+        "Satélite":      "mapa_satelital.html",
+        "Heatmap":       "mapa_heatmap.html"
+    }
+
+    archivo_html = mapa_archivos[mapa_tipo]
+    zip_path     = "data/mapas_verificacion.zip"
+
+    try:
+        with zipfile.ZipFile(zip_path, "r") as z:
+            html_content = z.read(archivo_html).decode("utf-8")
+        components.html(html_content, height=650, scrolling=True)
+
+    except FileNotFoundError:
+        st.error("❌ No se encontró el archivo: data/mapas_verificacion.zip")
+
+    except KeyError:
+        st.error(f"❌ El archivo {archivo_html} no existe dentro del ZIP.")
