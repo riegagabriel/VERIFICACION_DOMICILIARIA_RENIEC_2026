@@ -2,7 +2,6 @@ import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
-import zipfile
 import streamlit.components.v1 as components
 
 # ========================
@@ -14,7 +13,7 @@ st.set_page_config(
 )
 
 st.title("📊 Verificación Domiciliaria")
-st.markdown("Monitoreo de avance de la verificación domiciliaria en distritos")
+st.markdown("Monitoreo de avance de la verificación domiciliaria")
 
 # ========================
 # FUNCIONES DE CARGA
@@ -23,13 +22,6 @@ st.markdown("Monitoreo de avance de la verificación domiciliaria en distritos")
 def load_excel(path):
     try:
         return pd.read_excel(path)
-    except:
-        return pd.DataFrame()
-
-@st.cache_data
-def load_csv(path):
-    try:
-        return pd.read_csv(path, parse_dates=['fecha'])
     except:
         return pd.DataFrame()
 
@@ -44,7 +36,7 @@ data_dist       = load_excel("data/data_distritos.xlsx")
 data_enc        = load_excel("data/data_encuestadores.xlsx")
 
 # ========================
-# LIMPIEZA / SEGURIDAD
+# LIMPIEZA CLAVE (🔥 FIX)
 # ========================
 def asegurar_col(df, col):
     if col not in df.columns:
@@ -52,6 +44,12 @@ def asegurar_col(df, col):
     return df
 
 if not tabla_distrito.empty:
+
+    # 🔥 FIX PRINCIPAL
+    tabla_distrito = tabla_distrito.rename(columns={
+        "tipo_sin_causal": "Sin_causal"
+    })
+
     for col in ["A", "B", "C", "Sin_causal"]:
         tabla_distrito = asegurar_col(tabla_distrito, col)
 
@@ -65,8 +63,8 @@ for df in [data_dept, data_dist, data_enc]:
 # ========================
 tab1, tab2, tab3, tab4 = st.tabs([
     "📈 Progreso General",
-    "📍 Monitoreo por Departamento",
-    "👤 Monitoreo por Encuestador",
+    "📍 Departamento",
+    "👤 Encuestador",
     "🗺️ Mapa"
 ])
 
@@ -89,36 +87,39 @@ with tab1:
         dnis = deps = provs = dist = fechas = personal = 0
 
     col1, col2, col3, col4, col5, col6 = st.columns(6)
-    col1.metric("🆔 Ciudadanos Verificados", f"{int(dnis):,}")
-    col2.metric("🗺️ Departamentos", int(deps))
-    col3.metric("🏛️ Provincias", int(provs))
-    col4.metric("📍 Distritos", int(dist))
-    col5.metric("🗓️ Jornadas", int(fechas))
-    col6.metric("👷 Personal", int(personal))
+    col1.metric("🆔 Verificados", f"{int(dnis):,}")
+    col2.metric("Departamentos", int(deps))
+    col3.metric("Provincias", int(provs))
+    col4.metric("Distritos", int(dist))
+    col5.metric("Jornadas", int(fechas))
+    col6.metric("Encuestadores", int(personal))
 
-    # Gauge
+    # ========================
+    # GAUGE
+    # ========================
     POB_TOTAL = 65137
-    porc_avance_general = round((dnis / POB_TOTAL) * 100, 2) if POB_TOTAL > 0 else 0
+    avance = round((dnis / POB_TOTAL) * 100, 2) if POB_TOTAL else 0
     pendientes = POB_TOTAL - int(dnis)
 
-    col_gauge, col_resumen = st.columns([2, 1])
+    col_g1, col_g2 = st.columns([2, 1])
 
-    with col_gauge:
-        fig_gauge = go.Figure(go.Indicator(
+    with col_g1:
+        fig = go.Figure(go.Indicator(
             mode="gauge+number",
-            value=porc_avance_general,
+            value=avance,
             number={"suffix": "%"},
-            title={"text": "Avance General"},
+            title={"text": "Avance"},
             gauge={"axis": {"range": [0, 100]}}
         ))
-        st.plotly_chart(fig_gauge, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True)
 
-    with col_resumen:
+    with col_g2:
         st.metric("Meta", f"{POB_TOTAL:,}")
-        st.metric("Verificados", f"{int(dnis):,}")
         st.metric("Pendientes", f"{pendientes:,}")
 
-    # Filtros
+    # ========================
+    # FILTROS
+    # ========================
     if not tabla_distrito.empty:
 
         depto = st.selectbox("Departamento", ["Todos"] + sorted(tabla_distrito["REG"].unique()))
@@ -139,21 +140,26 @@ with tab1:
 
     else:
         df_filtrado = pd.DataFrame()
+        depto = distrito = "Todos"
 
-    # Situaciones
+    # ========================
+    # SITUACIONES
+    # ========================
     st.subheader("Situaciones")
 
-    if distrito == "Todos" and depto == "Todos" and not box_situaciones.empty:
+    if depto == "Todos" and distrito == "Todos" and not box_situaciones.empty:
+
         situaciones = dict(zip(box_situaciones["Variable"], box_situaciones["Valor"]))
         A = situaciones.get("tipo_a", 0)
         B = situaciones.get("tipo_b", 0)
         C = situaciones.get("tipo_c", 0)
         Sin_causal = situaciones.get("tipo_sin_causal", 0)
+
     else:
-        A = df_filtrado["A"].sum() if "A" in df_filtrado.columns else 0
-        B = df_filtrado["B"].sum() if "B" in df_filtrado.columns else 0
-        C = df_filtrado["C"].sum() if "C" in df_filtrado.columns else 0
-        Sin_causal = df_filtrado["Sin_causal"].sum() if "Sin_causal" in df_filtrado.columns else 0
+        A = df_filtrado["A"].sum()
+        B = df_filtrado["B"].sum()
+        C = df_filtrado["C"].sum()
+        Sin_causal = df_filtrado["Sin_causal"].sum()
 
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("Tipo A", f"{int(A):,}")
@@ -161,21 +167,27 @@ with tab1:
     col3.metric("Tipo C", f"{int(C):,}")
     col4.metric("Sin Causal", f"{int(Sin_causal):,}")
 
+    # ========================
+    # PIE CHART
+    # ========================
     fig_pie = go.Figure(data=[go.Pie(
-        labels=["Tipo A", "Tipo B", "Tipo C", "Sin Causal"],
+        labels=["A", "B", "C", "Sin Causal"],
         values=[A, B, C, Sin_causal],
         hole=0.5
     )])
     st.plotly_chart(fig_pie, use_container_width=True)
 
-    # Tabla
+    # ========================
+    # TABLA
+    # ========================
     st.subheader("📋 Avance por distrito")
 
     if not df_filtrado.empty:
 
         columnas = [
             "REG", "PROV", "DIST",
-            "ciudadanos_verificados", "A", "B", "C", "Sin_causal",
+            "ciudadanos_verificados",
+            "A", "B", "C", "Sin_causal",
             "MAX_POB_VERIFICAR", "PORC_AVANCE"
         ]
 
