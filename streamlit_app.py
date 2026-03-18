@@ -168,19 +168,22 @@ with tab1:
         A = situaciones.get("tipo_a", 0)
         B = situaciones.get("tipo_b", 0)
         C = situaciones.get("tipo_c", 0)
+        Sin_causal = situaciones.get("tipo_sin_causal", 0)
     else:
         A = df_filtrado["A"].sum()
         B = df_filtrado["B"].sum()
         C = df_filtrado["C"].sum()
+        Sin_causal = df_filtrado["Sin_causal"].sum()
 
     col1, col2, col3 = st.columns(3)
     col1.metric("Tipo A", f"{int(A):,}")
     col2.metric("Tipo B", f"{int(B):,}")
     col3.metric("Tipo C", f"{int(C):,}")
+    col4.metric("Sin Causal", f"{int(Sin_causal):,}")
 
     fig_pie = go.Figure(data=[go.Pie(
-        labels=["Tipo A", "Tipo B", "Tipo C"],
-        values=[A, B, C],
+        labels=["Tipo A", "Tipo B", "Tipo C","Sin Causal"],
+        values=[A, B, C, Sin_Causal],
         hole=.55
     )])
     fig_pie.update_layout(height=400)
