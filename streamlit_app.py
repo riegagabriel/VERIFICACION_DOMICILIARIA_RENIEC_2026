@@ -3,6 +3,7 @@ import pandas as pd
 import plotly.graph_objects as go
 import plotly.express as px
 import streamlit.components.v1 as components
+import zipfile
 
 # ========================
 # CONFIGURACIÓN GENERAL
