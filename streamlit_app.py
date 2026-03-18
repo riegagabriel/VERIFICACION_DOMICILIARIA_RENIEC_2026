@@ -175,15 +175,15 @@ with tab1:
         C = df_filtrado["C"].sum()
         Sin_causal = df_filtrado["Sin_causal"].sum()
 
-    col1, col2, col3 = st.columns(3)
+    col1, col2, col3, col4 = st.columns(4)
     col1.metric("Tipo A", f"{int(A):,}")
     col2.metric("Tipo B", f"{int(B):,}")
     col3.metric("Tipo C", f"{int(C):,}")
     col4.metric("Sin Causal", f"{int(Sin_causal):,}")
 
     fig_pie = go.Figure(data=[go.Pie(
-        labels=["Tipo A", "Tipo B", "Tipo C","Sin Causal"],
-        values=[A, B, C, Sin_Causal],
+        labels=["Tipo A", "Tipo B", "Tipo C", "Sin Causal"],
+        values=[A, B, C, Sin_causal],
         hole=.55
     )])
     fig_pie.update_layout(height=400)
