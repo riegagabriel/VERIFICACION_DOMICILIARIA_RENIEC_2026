@@ -43,13 +43,22 @@ data_dept       = load_excel("data/data_total_departamentos.xlsx")
 data_dist       = load_excel("data/data_distritos.xlsx")
 data_enc        = load_excel("data/data_encuestadores.xlsx")
 
-# Asegurar que 'fecha' sea datetime
-if not data_dept.empty:
-    data_dept['fecha'] = pd.to_datetime(data_dept['fecha'])
-if not data_dist.empty:
-    data_dist['fecha'] = pd.to_datetime(data_dist['fecha'])
-if not data_enc.empty:
-    data_enc['fecha'] = pd.to_datetime(data_enc['fecha'])
+# ========================
+# LIMPIEZA / SEGURIDAD
+# ========================
+def asegurar_col(df, col):
+    if col not in df.columns:
+        df[col] = 0
+    return df
+
+if not tabla_distrito.empty:
+    for col in ["A", "B", "C", "Sin_causal"]:
+        tabla_distrito = asegurar_col(tabla_distrito, col)
+
+# fechas
+for df in [data_dept, data_dist, data_enc]:
+    if not df.empty and "fecha" in df.columns:
+        df["fecha"] = pd.to_datetime(df["fecha"], errors="coerce")
 
 # ========================
 # TABS
@@ -62,11 +71,10 @@ tab1, tab2, tab3, tab4 = st.tabs([
 ])
 
 # ====================================================
-# TAB 1: PROGRESO GENERAL
+# TAB 1
 # ====================================================
 with tab1:
 
-    # --- Indicadores ---
     st.subheader("Indicadores")
 
     if not value_box.empty:
@@ -82,98 +90,70 @@ with tab1:
 
     col1, col2, col3, col4, col5, col6 = st.columns(6)
     col1.metric("🆔 Ciudadanos Verificados", f"{int(dnis):,}")
-    col2.metric("🗺️ Departamentos",          int(deps))
-    col3.metric("🏛️ Provincias",             int(provs))
-    col4.metric("📍 Distritos",              int(dist))
-    col5.metric("🗓️ Jornadas",               int(fechas))
-    col6.metric("👷 Personal",               int(personal))
+    col2.metric("🗺️ Departamentos", int(deps))
+    col3.metric("🏛️ Provincias", int(provs))
+    col4.metric("📍 Distritos", int(dist))
+    col5.metric("🗓️ Jornadas", int(fechas))
+    col6.metric("👷 Personal", int(personal))
 
-    # --- Gauge ---
-    POB_TOTAL           = 65137
+    # Gauge
+    POB_TOTAL = 65137
     porc_avance_general = round((dnis / POB_TOTAL) * 100, 2) if POB_TOTAL > 0 else 0
-    pendientes          = POB_TOTAL - int(dnis)
+    pendientes = POB_TOTAL - int(dnis)
 
     col_gauge, col_resumen = st.columns([2, 1])
 
     with col_gauge:
         fig_gauge = go.Figure(go.Indicator(
-            mode="gauge+number+delta",
+            mode="gauge+number",
             value=porc_avance_general,
-            number={"suffix": "%", "font": {"size": 48}},
-            delta={"reference": 100, "suffix": "%"},
-            title={"text": "Avance General de Verificación", "font": {"size": 18}},
-            gauge={
-                "axis": {"range": [0, 100], "ticksuffix": "%"},
-                "bar": {"color": "#2ecc71"},
-                "steps": [
-                    {"range": [0, 33],   "color": "#f9e4e4"},
-                    {"range": [33, 66],  "color": "#fef9e7"},
-                    {"range": [66, 100], "color": "#eafaf1"},
-                ],
-                "threshold": {
-                    "line": {"color": "#e74c3c", "width": 4},
-                    "thickness": 0.75,
-                    "value": 100
-                }
-            }
+            number={"suffix": "%"},
+            title={"text": "Avance General"},
+            gauge={"axis": {"range": [0, 100]}}
         ))
-        fig_gauge.update_layout(height=300, margin=dict(t=60, b=20, l=30, r=30))
         st.plotly_chart(fig_gauge, use_container_width=True)
 
     with col_resumen:
-        st.markdown("### Resumen de avance general")
-        st.markdown("---")
-        st.metric("🎯 Meta total",   f"{POB_TOTAL:,}")
-        st.metric("✅ Verificados",   f"{int(dnis):,}")
-        st.metric("⏳ Pendientes",    f"{pendientes:,}")
-        st.metric("📈 % Completado",  f"{porc_avance_general}%")
+        st.metric("Meta", f"{POB_TOTAL:,}")
+        st.metric("Verificados", f"{int(dnis):,}")
+        st.metric("Pendientes", f"{pendientes:,}")
 
-    # --- Filtros ---
-    st.subheader("Filtros")
-
+    # Filtros
     if not tabla_distrito.empty:
 
-        col1, col2 = st.columns(2)
+        depto = st.selectbox("Departamento", ["Todos"] + sorted(tabla_distrito["REG"].unique()))
 
-        with col1:
-            deptos = ["Todos"] + sorted(tabla_distrito["REG"].unique())
-            depto  = st.selectbox("Departamento", deptos, key="filtro_depto")
+        if depto == "Todos":
+            distritos = sorted(tabla_distrito["DIST"].unique())
+        else:
+            distritos = sorted(tabla_distrito[tabla_distrito["REG"] == depto]["DIST"].unique())
 
-        with col2:
-            if depto == "Todos":
-                distritos = sorted(tabla_distrito["DIST"].unique())
-            else:
-                distritos = sorted(
-                    tabla_distrito[tabla_distrito["REG"] == depto]["DIST"].unique()
-                )
-            distrito = st.selectbox("Distrito", ["Todos"] + distritos, key="filtro_distrito")
+        distrito = st.selectbox("Distrito", ["Todos"] + distritos)
 
         df_filtrado = tabla_distrito.copy()
-        if depto    != "Todos":
-            df_filtrado = df_filtrado[df_filtrado["REG"]  == depto]
+
+        if depto != "Todos":
+            df_filtrado = df_filtrado[df_filtrado["REG"] == depto]
         if distrito != "Todos":
             df_filtrado = df_filtrado[df_filtrado["DIST"] == distrito]
 
     else:
         df_filtrado = pd.DataFrame()
-        depto = distrito = "Todos"
 
-    st.markdown("---")
+    # Situaciones
+    st.subheader("Situaciones")
 
-    # --- Situaciones ---
-    st.subheader("Situaciones de verificación")
-
-    if distrito == "Todos" and depto == "Todos":
+    if distrito == "Todos" and depto == "Todos" and not box_situaciones.empty:
         situaciones = dict(zip(box_situaciones["Variable"], box_situaciones["Valor"]))
         A = situaciones.get("tipo_a", 0)
         B = situaciones.get("tipo_b", 0)
         C = situaciones.get("tipo_c", 0)
         Sin_causal = situaciones.get("tipo_sin_causal", 0)
     else:
-        A = df_filtrado["A"].sum()
-        B = df_filtrado["B"].sum()
-        C = df_filtrado["C"].sum()
-        Sin_causal = df_filtrado["Sin_causal"].sum()
+        A = df_filtrado["A"].sum() if "A" in df_filtrado.columns else 0
+        B = df_filtrado["B"].sum() if "B" in df_filtrado.columns else 0
+        C = df_filtrado["C"].sum() if "C" in df_filtrado.columns else 0
+        Sin_causal = df_filtrado["Sin_causal"].sum() if "Sin_causal" in df_filtrado.columns else 0
 
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("Tipo A", f"{int(A):,}")
@@ -184,46 +164,34 @@ with tab1:
     fig_pie = go.Figure(data=[go.Pie(
         labels=["Tipo A", "Tipo B", "Tipo C", "Sin Causal"],
         values=[A, B, C, Sin_causal],
-        hole=.55
+        hole=0.5
     )])
-    fig_pie.update_layout(height=400)
     st.plotly_chart(fig_pie, use_container_width=True)
 
-    st.markdown("---")
-
-    # --- Tabla distrito ---
+    # Tabla
     st.subheader("📋 Avance por distrito")
 
     if not df_filtrado.empty:
-        df_filtrado["PORC_AVANCE"] = df_filtrado["PORC_AVANCE"].round(2)
-        tabla  = df_filtrado.sort_values(by="PORC_AVANCE", ascending=False)
-        buscar = st.text_input("🔎 Buscar distrito")
 
-        if buscar:
-            tabla = tabla[tabla["DIST"].str.contains(buscar, case=False)]
+        columnas = [
+            "REG", "PROV", "DIST",
+            "ciudadanos_verificados", "A", "B", "C", "Sin_causal",
+            "MAX_POB_VERIFICAR", "PORC_AVANCE"
+        ]
 
-        st.dataframe(
-            tabla[[
-                "REG", "PROV", "DIST",
-                "ciudadanos_verificados", "A", "B", "C","tipo_sin_causal",
-                "MAX_POB_VERIFICAR", "PORC_AVANCE"
-            ]].rename(columns={
-                "REG":                    "Departamento",
-                "PROV":                   "Provincia",
-                "DIST":                   "Distrito",
-                "ciudadanos_verificados": "Ciudadanos Verificados",
-                "A":                      "Tipo A",
-                "B":                      "Tipo B",
-                "C":                      "Tipo C",
-                "tipo_sin_causal":        "Sin Causal",
-                "MAX_POB_VERIFICAR":      "Población a Verificar",
-                "PORC_AVANCE":            "% Avance"
-            }),
-            use_container_width=True,
-            hide_index=True
-        )
-    else:
-        st.warning("No se encontró la tabla desagregada.")
+        columnas = [c for c in columnas if c in df_filtrado.columns]
+
+        tabla = df_filtrado[columnas].copy()
+
+        tabla = tabla.rename(columns={
+            "REG": "Departamento",
+            "PROV": "Provincia",
+            "DIST": "Distrito",
+            "ciudadanos_verificados": "Verificados",
+            "Sin_causal": "Sin Causal"
+        })
+
+        st.dataframe(tabla, use_container_width=True, hide_index=True)
 
 
 # ====================================================
