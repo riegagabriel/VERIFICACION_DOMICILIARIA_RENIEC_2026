@@ -205,7 +205,7 @@ with tab1:
         st.dataframe(
             tabla[[
                 "REG", "PROV", "DIST",
-                "ciudadanos_verificados", "A", "B", "C","tipo_sin_causal,
+                "ciudadanos_verificados", "A", "B", "C","tipo_sin_causal",
                 "MAX_POB_VERIFICAR", "PORC_AVANCE"
             ]].rename(columns={
                 "REG":                    "Departamento",
